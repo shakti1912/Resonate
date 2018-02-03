@@ -1,6 +1,6 @@
 from flask import Flask
 from flask import Response
-from flask import Request as request
+from flask import request
 from flask import jsonify
 #import database_connection as mongo
 flask_app = Flask(__name__)
@@ -13,10 +13,11 @@ def hello_world():
         mimetype='text/plain'
     )
 
-@flask_app.route('/api/login/spotify/')
+@flask_app.route('/api/login/spotify')
 def sign_up():
+    c = request.args.get('code')
     d = {}
-    d['code'] = request.args['code']
+    d['code'] = c
 
     return jsonify(
         code=d['code']
