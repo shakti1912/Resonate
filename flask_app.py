@@ -15,13 +15,19 @@ def hello_world():
 
 @flask_app.route('/api/login/spotify/')
 def sign_up():
-    request.args['code']
     d = {}
-    d.code = request.args['code']
-    return d.code
+    d['code'] = request.args['code']
+
+    return jsonify(
+        code=d['code']
+    )
+    #return Response(
+     #   'code from Flask!\n',
+     #   mimetype='application/json'
+    #)
 
 
 #app = flask_app.wsgi_app
 
 if __name__ == '__main__':
-    flask_app.run(debug=True, host='0.0.0.0')
+    flask_app.run(debug=True, host='0.0.0.0', port=80)
