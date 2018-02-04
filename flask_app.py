@@ -1,4 +1,5 @@
-from flask import Flask
+import os
+from flask import Flask, send_from_directory
 from flask import Response
 from flask import request
 from flask import jsonify
@@ -6,6 +7,10 @@ import requests
 import base64
 import urllib
 import json
+from pathlib import Path
+from flask_jwt import JWT, jwt_required, current_identity
+from werkzeug.security import safe_str_cmp
+
 #import database_connection as mongo
 
 #  Client Keys
@@ -22,7 +27,7 @@ SPOTIFY_API_URL = "{}/{}".format(SPOTIFY_API_BASE_URL, API_VERSION)
 
 
 # Server-side Parameters
-CLIENT_SIDE_URL = "http://18.221.244.159"
+CLIENT_SIDE_URL = "http://localhost"
 PORT = 80
 REDIRECT_URI = "{}/api/login/spotify".format(CLIENT_SIDE_URL)
 SCOPE = "playlist-modify-public playlist-modify-private user-read-private user-read-birthdate user-read-email user-library-read"
@@ -30,16 +35,78 @@ STATE = ""
 SHOW_DIALOG_bool = True
 SHOW_DIALOG_str = str(SHOW_DIALOG_bool).lower()
 
+class User(object):
+    def __init__(self, id, username, password):
+        self.id = id
+        self.username = username
+        self.password = password
+
+    def __str__(self):
+        return "User(id='%s')" % self.id
+
+users = [
+    User(1, 'user1', 'abcxyz'),
+    User(2, 'user2', 'abcxyz'),
+]
+
+username_table = {u.username: u for u in users}
+userid_table = {u.id: u for u in users}
+
+
+def authenticate(username, password):
+    user = username_table.get(username, None)
+    if user and safe_str_cmp(user.password.encode('utf-8'), password.encode('utf-8')):
+        return user
+    # return 1
+
+def identity(payload):
+    user_id = payload['identity']
+    return userid_table.get(user_id, None)
+    # return 1
 
 flask_app = Flask(__name__)
 
+flask_app.config['SECRET_KEY'] = 'super-secret'
 
-@flask_app.route('/')
-def hello_world():
-    return Response(
-        'Hello world from Flask!\n',
-        mimetype='text/plain'
-    )
+jwt = JWT(flask_app, authenticate, identity)
+
+@flask_app.route('/<path:filename>')
+def serve_static(filename):
+    root_dir = os.path.dirname(os.getcwd())
+
+    my_file = Path(os.path.join(root_dir, 'Resonate', 'client', 'build') + filename)
+    if my_file.is_file():
+        return send_from_directory(os.path.join(root_dir, 'Resonate', 'client', 'build'), filename)
+    else:
+        return send_from_directory(os.path.join(root_dir, 'Resonate', 'client', 'build'), 'index.html')
+
+@flask_app.route('/static/css/<path:filename>')
+def serve_static_static_css(filename):
+    root_dir = os.path.dirname(os.getcwd())
+    return send_from_directory(os.path.join(root_dir, 'Resonate', 'client', 'build', 'static', 'css'), filename)
+
+@flask_app.route('/static/js/<path:filename>')
+def serve_static_static_js(filename):
+    root_dir = os.path.dirname(os.getcwd())
+    return send_from_directory(os.path.join(root_dir, 'Resonate', 'client', 'build', 'static', 'js'), filename)
+
+@flask_app.route('/static/media/<path:filename>')
+def serve_static_static_media(filename):
+    root_dir = os.path.dirname(os.getcwd())
+    return send_from_directory(os.path.join(root_dir, 'Resonate', 'client', 'build', 'static', 'media'), filename)
+
+@flask_app.route('/party/<id>')
+def get_party(id):
+    #Get party from DB
+    return id
+
+@flask_app.route('/party', methods=['POST'])
+@jwt_required()
+def create_party():
+    #Add party to DB
+    return '%s' % current_identity.id + request.data
+
+
 
 @flask_app.route('/api/login/spotify')
 def sign_up():
@@ -98,11 +165,11 @@ def sign_up():
         status=200,
         mimetype='application/json'
     )
-    print create_user(access_token, json.dumps(display_arr))
+    # print create_user(access_token, json.dumps(display_arr))
    # print response
     return response
 
-@flask_app.route()
+# @flask_app.route()
 def create_user(token, r):
     resp = json.loads(r)[0]
     user = {}
@@ -119,6 +186,15 @@ def create_user(token, r):
 
     return user
 
+@flask_app.route('/')
+def serve_static_index():
+    root_dir = os.path.dirname(os.getcwd())
+    return send_from_directory(os.path.join(root_dir, 'Resonate', 'client', 'build'), 'index.html')
+
+@flask_app.route('/protected')
+@jwt_required()
+def protected():
+    return '%s' % current_identity
 
 if __name__ == '__main__':
     flask_app.run(debug=True, host='0.0.0.0', port=80)
