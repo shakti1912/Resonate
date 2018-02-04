@@ -1,4 +1,6 @@
 import os
+
+import datetime
 from flask import Flask, send_from_directory
 from flask import Response
 from flask import request
@@ -8,10 +10,11 @@ import requests
 import base64
 import urllib
 import json
+import jwt
+import threading
 
 from pathlib import Path
-from flask_jwt import JWT, jwt_required, current_identity
-from werkzeug.security import safe_str_cmp
+
 
 #  Client Keys
 CLIENT_ID = "f593d8a2348948c5a1fb8dea345ff106"
@@ -28,85 +31,59 @@ SPOTIFY_API_URL = "{}/{}".format(SPOTIFY_API_BASE_URL, API_VERSION)
 CLIENT_SIDE_URL = "http://localhost"
 PORT = 80
 REDIRECT_URI = "{}/api/login/spotify".format(CLIENT_SIDE_URL)
-SCOPE = "playlist-modify-public playlist-modify-private user-read-private user-read-birthdate user-read-email user-library-read"
+SCOPE = "user-read-private user-read-birthdate user-read-email user-library-read"
 STATE = ""
 SHOW_DIALOG_bool = True
 SHOW_DIALOG_str = str(SHOW_DIALOG_bool).lower()
 
-class User(object):
-    def __init__(self, id, username, password):
-        self.id = id
-        self.username = username
-        self.password = password
-
-    def __str__(self):
-        return "User(id='%s')" % self.id
-
-users = [
-    User(1, 'user1', 'abcxyz'),
-    User(2, 'user2', 'abcxyz'),
-]
-
-username_table = {u.username: u for u in users}
-userid_table = {u.id: u for u in users}
-
-
-def authenticate(username, password):
-    user = username_table.get(username, None)
-    if user and safe_str_cmp(user.password.encode('utf-8'), password.encode('utf-8')):
-        return user
-    # return 1
-
-def identity(payload):
-    user_id = payload['identity']
-    return userid_table.get(user_id, None)
-    # return 1
 
 flask_app = Flask(__name__)
 
 flask_app.config['SECRET_KEY'] = 'super-secret'
 
-jwt = JWT(flask_app, authenticate, identity)
 
 @flask_app.route('/<path:filename>')
 def serve_static(filename):
     root_dir = os.path.dirname(os.getcwd())
 
-    my_file = Path(os.path.join(root_dir, 'Resonate', 'client', 'build') + filename)
+    my_file = Path(os.path.join(root_dir, 'Hackathon', 'client', 'build') + filename)
     if my_file.is_file():
-        return send_from_directory(os.path.join(root_dir, 'Resonate', 'client', 'build'), filename)
+        return send_from_directory(os.path.join(root_dir, 'Hackathon', 'client', 'build'), filename)
     else:
-        return send_from_directory(os.path.join(root_dir, 'Resonate', 'client', 'build'), 'index.html')
+        return send_from_directory(os.path.join(root_dir, 'Hackathon', 'client', 'build'), 'index.html')
 
 @flask_app.route('/static/css/<path:filename>')
 def serve_static_static_css(filename):
     root_dir = os.path.dirname(os.getcwd())
-    return send_from_directory(os.path.join(root_dir, 'Resonate', 'client', 'build', 'static', 'css'), filename)
+    return send_from_directory(os.path.join(root_dir, 'Hackathon', 'client', 'build', 'static', 'css'), filename)
 
 @flask_app.route('/static/js/<path:filename>')
 def serve_static_static_js(filename):
     root_dir = os.path.dirname(os.getcwd())
-    return send_from_directory(os.path.join(root_dir, 'Resonate', 'client', 'build', 'static', 'js'), filename)
+    return send_from_directory(os.path.join(root_dir, 'Hackathon', 'client', 'build', 'static', 'js'), filename)
 
 @flask_app.route('/static/media/<path:filename>')
 def serve_static_static_media(filename):
     root_dir = os.path.dirname(os.getcwd())
-    return send_from_directory(os.path.join(root_dir, 'Resonate', 'client', 'build', 'static', 'media'), filename)
+    return send_from_directory(os.path.join(root_dir, 'Hackathon', 'client', 'build', 'static', 'media'), filename)
 
 @flask_app.route('/party/<id>')
 def get_party(id):
     #Get party from DB
     return id
 
-@flask_app.route('/party', methods=['POST'])
-@jwt_required()
-def create_party():
-    #Add party to DB
-    return '%s' % current_identity.id + request.data
+# @flask_app.route('/party', methods=['POST'])
+# def create_party():
+#     #Add party to DB
+#     return '%s' % current_identity.id + request.data
 
 
+def worker(token):
+    """thread worker function"""
+    print 'Worker'
+    return
 
-
+#returns jwt token
 @flask_app.route('/api/login/spotify')
 def sign_up():
     c = request.args.get('code')
@@ -135,22 +112,36 @@ def sign_up():
     refresh_token = response_data["refresh_token"]
     token_type = response_data["token_type"]
     expires_in = response_data["expires_in"]
-    conn.insert_token(access_token)
+    #conn.insert_token(access_token)
     print "from spotify end point"
     # using_access_token()
 
+
     # Auth Step 6: Use the access token to access Spotify API
-    # authorization_header = {"Authorization": "Bearer {}".format(access_token)}
+    authorization_header = {"Authorization": "Bearer {}".format(access_token)}
 
     # Get profile data
-    # user_profile_api_endpoint = "{}/me".format(SPOTIFY_API_URL)
-    # profile_response = requests.get(user_profile_api_endpoint, headers=authorization_header)
-    # profile_data = json.loads(profile_response.text)
+    user_profile_api_endpoint = "{}/me".format(SPOTIFY_API_URL)
+    profile_response = requests.get(user_profile_api_endpoint, headers=authorization_header)
+    profile_data = json.loads(profile_response.text)
+    email = profile_data['email']
 
-    # Get user playlist data
-    # playlist_api_endpoint = "{}/playlists".format(profile_data["href"])
-    # playlists_response = requests.get(playlist_api_endpoint, headers=authorization_header)
-    # playlist_data = json.loads(playlists_response.text)
+    print profile_data['email']
+    res = conn.get_users_collection().find({'email': email}).limit(1)
+    print res.count()
+    if res.count() == 0:
+            conn.insert_token(email, access_token)
+            t = threading.Thread(target=using_access_token, args=(email,access_token))
+            t.start()
+
+    else:
+        print res
+        for r in res:
+            conn.get_users_collection().update_one({"email": email}, {"$set" : {"token" : access_token}})
+
+    jwt_str = encode_auth_token(email)
+    print jwt_str
+    return jwt_str
 
     # Get user tracks
     # tracks_api_endpoint = "{}/me/tracks".format(SPOTIFY_API_URL)
@@ -172,25 +163,31 @@ def sign_up():
     # print response
     # return response
 
+def encode_auth_token(user_id):
+    """
+    Generates the Auth Token
+    :return: string
+    """
+    try:
+        payload = {
+            'exp': datetime.datetime.utcnow() + datetime.timedelta(days=0, seconds=5),
+            'iat': datetime.datetime.utcnow(),
+            'sub': user_id
+        }
+        return jwt.encode(
+            payload,
+            "dick",
+            algorithm='HS256'
+        )
+    except Exception as e:
 
-@flask_app.route('/api/login/spotify/testing')
-def using_access_token():
-    token = conn.get_users_collection().find_one()['token']
+        return e
 
+# thread function
+def using_access_token(email, token):
+    print token
     # Auth Step 6: Use the access token to access Spotify API
     authorization_header = {"Authorization": "Bearer {}".format(token)}
-
-    # Get profile data
-    user_profile_api_endpoint = "{}/me".format(SPOTIFY_API_URL)
-    profile_response = requests.get(user_profile_api_endpoint, headers=authorization_header)
-    profile_data = json.loads(profile_response.text)
-    print "from using_Access_token method "
-
-    # Get user playlist data
-    playlist_api_endpoint = "{}/playlists".format(profile_data["href"])
-    playlists_response = requests.get(playlist_api_endpoint, headers=authorization_header)
-    playlist_data = json.loads(playlists_response.text)
-    # print playlist_data
 
     # Get user tracks
     tracks_api_endpoint = "{}/me/tracks".format(SPOTIFY_API_URL)
@@ -200,10 +197,9 @@ def using_access_token():
 
     # Combine profile and playlist data to display
     data_dict = {}
-    data_dict['profile'] = profile_data
-    data_dict['playlist'] = playlist_data
-    data_dict['tracks'] = tracks_data
 
+    data_dict['tracks'] = tracks_data
+    print
     # display_arr = [profile_data] + playlist_data["items"]  + tracks_data['items']
 
 
@@ -212,19 +208,15 @@ def using_access_token():
         status=200,
         mimetype='application/json'
     )
-    create_user(token, json.dumps(data_dict))
+    update_songs(email, json.dumps(data_dict))
 
     return response
 
 
-def create_user(token, r):
+def update_songs(email, r):
     resp = json.loads(r)  # resp is a dict
 
-    user = {}
-    email = resp['profile']['email']
-    user['email'] = email
-    user['access_token'] = token
-    user['songs'] = []
+    songs = []
 
     items = resp['tracks']["items"]
     print 'ITEMS TYPE: ==========================> '
@@ -241,19 +233,15 @@ def create_user(token, r):
         print song_name + ' ' + artist_name
 
         songs_details = {"song_name": song_name, "artist_name": artist_name}
-        user['songs'].append(songs_details)
+        songs.append(songs_details)
 
-    conn.get_users_collection().insert(user)
+    conn.get_users_collection().update({"email": email}, {"$set":{"songs": songs}})
 
 @flask_app.route('/')
 def serve_static_index():
     root_dir = os.path.dirname(os.getcwd())
-    return send_from_directory(os.path.join(root_dir, 'Resonate', 'client', 'build'), 'index.html')
+    return send_from_directory(os.path.join(root_dir, 'Hackathon', 'client', 'build'), 'index.html')
 
-@flask_app.route('/protected')
-@jwt_required()
-def protected():
-    return '%s' % current_identity
 
 if __name__ == '__main__':
     flask_app.run(debug=True, host='0.0.0.0', port=80)

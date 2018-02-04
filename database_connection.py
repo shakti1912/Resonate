@@ -23,9 +23,10 @@ def get_database():
 def get_users_collection():
     return db.users
 
-def insert_token(token):
+def insert_token(email, token):
     print "inserting token"
     db.users.insert({
+        "email" : email,
         "token" : token
     })
 
