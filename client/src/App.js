@@ -1,5 +1,11 @@
 import React, {Component} from 'react';
-import logo from './logo.svg';
+import logo from './icon.svg';
+import enter from './search.svg';
+import add from './add.svg';
+import home from './home.svg';
+import login from './login.svg';
+import profile from './user.svg';
+import menu from './menu.svg';
 import './App.css';
 import fetch from 'isomorphic-fetch';
 import {withStyles} from 'material-ui/styles';
@@ -94,7 +100,7 @@ const party = {
 const getYouTubeVideoId = (link) => {
     const re = /\?v=(.*)/;
 
-    if(!re.exec(link)[1]) {
+    if (!re.exec(link)[1]) {
 
         console.log('https://www.youtube.com/watch?v=' + link);
 
@@ -118,10 +124,10 @@ class Player extends Component {
 
             console.log(this);
 
-            if(id) {
+            if (id) {
                 fetch(`${server}/api/party/${id}`, {
                     headers: {
-                        'Authorization': 'JWT '+ JSON.parse(localStorage.auth).token
+                        'Authorization': 'JWT ' + JSON.parse(localStorage.auth).token
                     }
                 })
                     .then((response) => {
@@ -268,10 +274,11 @@ class Login extends Component {
                     </div>
 
                 </div> : <div>
-                    <div className={'Header'} onClick={() => {
-                        localStorage.removeItem('auth');
-                        window.location.reload();
-                    }}><h1>Log out</h1></div>
+                    {/*<div className={'Header'} onClick={() => {*/}
+                    {/*localStorage.removeItem('auth');*/}
+                    {/*window.location.reload();*/}
+                    {/*}}><h1>Log out</h1></div>*/}
+                    <Redirect to={'me'}/>
                 </div>
                 }
             </div>
@@ -279,55 +286,86 @@ class Login extends Component {
     }
 }
 
-class UserPage extends Component {
+class AddPartyPage extends Component {
     constructor(props) {
         super(props);
 
         this.state = {
-           newPartyId: null
+            newPartyId: null
         };
     }
 
     render() {
         return (
             <div>
-                {localStorage.auth ? <div>
+                <label style={{color: 'white'}} htmlFor="party_name">Party name</label>
+                <input type="text" id="party_name"/>
 
-                    <div style={{color: 'white'}}>Logged in as {JSON.parse(localStorage.auth).email}</div>
+                <div style={{color: 'white'}} onClick={() => {
 
-                    <div style={{color: 'white'}} onClick={() => {
+                    const parentObj = this;
 
-                        const parentObj = this;
-
-                        fetch(`${server}/api/party`, {
-                            method: 'post',
-                            headers: {
-                                'Authorization': 'JWT '+ JSON.parse(localStorage.auth).token
-                            },
-                            body: JSON.stringify( {
-                                name: 'New party'
-                            } )
+                    fetch(`${server}/api/party`, {
+                        method: 'post',
+                        headers: {
+                            'Authorization': 'JWT ' + JSON.parse(localStorage.auth).token
+                        },
+                        body: JSON.stringify({
+                            name: 'New party'
                         })
-                            .then(function (response) {
-                                if (response.status >= 400) {
-                                    throw new Error("Bad response from server");
-                                }
+                    })
+                        .then(function (response) {
+                            if (response.status >= 400) {
+                                throw new Error("Bad response from server");
+                            }
 
-                                console.log(response);
-                                return response.json();
-                            })
-                            .then(function (token) {
+                            console.log(response);
+                            return response.json();
+                        })
+                        .then(function (token) {
 
-                                parentObj.setState({
-                                    newPartyId: token.response.id
-                                });
-
-                                console.log(token);
+                            parentObj.setState({
+                                newPartyId: token.response.id
                             });
 
-                    }}>Add new party</div>
+                            console.log(token);
+                        });
 
-                    {this.state.newPartyId && <Redirect to={`/party/${this.state.newPartyId}`}/>}
+                }}>Add new party
+                </div>
+
+                {this.state.newPartyId && <Redirect to={`/party/${this.state.newPartyId}`}/>}
+            </div>
+        );
+    }
+}
+
+class UserPage extends Component {
+    render() {
+        return (
+            <div>
+                {localStorage.auth ? <div>
+
+                    {/*<div style={{color: 'white'}}>Logged in as {JSON.parse(localStorage.auth).email}</div>*/}
+
+                    <div style={{
+                        height: 120,
+                        width: 120,
+                        borderRadius: '50%',
+                        lineHeight: '120px',
+                        fontSize: '50px',
+                        backgroundColor: 'orange',
+                        textAlign: 'center',
+                        color: 'white',
+                        fontWeight: 'bold',
+                        margin: 'auto',
+                        marginTop: 50
+                    }}>
+                        {JSON.parse(localStorage.auth).email.charAt(0).toUpperCase()}
+                    </div>
+
+                    {localStorage.auth &&
+                    <div style={{color: 'white'}}>Logged in as {JSON.parse(localStorage.auth).email}</div>}
 
                 </div> : <Redirect to={'/login'}/>
                 }
@@ -337,6 +375,14 @@ class UserPage extends Component {
 }
 
 class App extends Component {
+    constructor(props){
+        super(props);
+
+        this.state = {
+            visible: false
+        }
+    }
+
     render() {
         return (
             <MuiThemeProvider theme={theme}>
@@ -346,13 +392,33 @@ class App extends Component {
                         <Route exact path="/" component={Player}/>
                         <Route path="/login" component={Login}/>
                         <Route path="/me" component={UserPage}/>
+                        <Route path="/newParty" component={AddPartyPage}/>
                         <Route path="/party/:id" component={Player}/>
                     </div>
                 </Router>
-
-                {localStorage.auth &&
-                <div style={{color: 'white'}}>Logged in as {JSON.parse(localStorage.auth).email}</div>}
-
+                {/*<div className="menu">*/}
+                {/*<div className={(this.state.visible ? "visible " : "") + this.props.alignment}>{this.props.children}</div>*/}
+                {/*</div>*/}
+                <div style={{
+                    position: 'fixed',
+                    right: 25,
+                    bottom: 25,
+                    backgroundColor: 'orange',
+                    width: 50,
+                    height: 50,
+                    borderRadius: '50%',
+                    textAlign: 'center',
+                    lineHeight: '44px',
+                    display: 'inline-block',
+                    verticalAlign: 'middle'
+                }}
+                onClick={() => {
+                    this.setState(prevState => ({visible: !prevState.visible}));
+                }}
+                ><img style={{marginTop: 10}} height='30' src={menu}/></div>
+                <div className={'theMenu ' + (this.state.visible ? 'out' : '')} onClick={() => {
+                    this.setState(prevState => ({visible: !prevState.visible}));
+                }}></div>
             </MuiThemeProvider>
         );
     }
@@ -361,11 +427,28 @@ class App extends Component {
 class Header extends Component {
     render() {
         return (
-            <div style={{color: 'white'}}>
-                <Link  style={{color: 'white'}} to={'/login'}>Login</Link>
-                <span>Logout</span>
-                <Link  style={{color: 'white'}} to={'/me'}>Create party</Link>
-                <Link  style={{color: 'white'}} to={'/'}>Join party</Link>
+            <div style={{
+                color: 'white',
+                display: 'flex',
+                justifyContent: 'space-evenly',
+                backgroundColor: 'orange',
+                height: 45,
+                alignItems: 'center'
+            }}>
+                <Link style={{color: 'white', height: 35}} to={'/'}><img height="35" src={home}/></Link>
+                {localStorage.auth &&
+                <Link style={{color: 'white', height: 35}} to={'/newParty'}><img height="35" src={add}/></Link>}
+                {localStorage.auth &&
+                <Link style={{color: 'white', height: 35}} to={'/'}><img height="35" src={enter}/></Link>}
+                {localStorage.auth &&
+                <Link style={{color: 'white', height: 35}} to={'/me'}><img height="35" src={profile}/></Link>}
+                {!localStorage.auth &&
+                <Link style={{color: 'white', height: 35}} to={'/login'}><img height="35" src={login}/></Link>}
+                {localStorage.auth && <span onClick={() => {
+                    localStorage.removeItem('auth');
+                    window.location.reload();
+                }} style={{textDecoration: 'underline', cursor: 'pointer', height: 35}}><img height="35"
+                                                                                             src={logo}/></span>}
             </div>
         );
     }
