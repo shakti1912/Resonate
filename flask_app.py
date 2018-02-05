@@ -25,7 +25,7 @@ from bson.json_util import dumps
 
 import sys
 
-server = sys.argv[1:] if sys.argv[1:] != [] else 'https://jbox.live/'
+server = sys.argv[1:] if sys.argv[1:] != [] else 'http://jbox.live/'
 
 #  Client Keys
 CLIENT_ID = "f593d8a2348948c5a1fb8dea345ff106"
