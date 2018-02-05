@@ -65,34 +65,35 @@ jwt_auth = JWT(flask_app, authenticate, identity)
 
 flask_app.config['SECRET_KEY'] = 'super-secret'
 
+folder_name = 'Hackathon'
 
 @flask_app.route('/<path:filename>')
 def serve_static(filename):
     root_dir = os.path.dirname(os.getcwd())
 
-    my_file = Path(os.path.join(root_dir, 'Hackathon', 'client', 'build') + filename)
+    my_file = Path(os.path.join(root_dir, folder_name, 'client', 'build') + filename)
     if my_file.is_file():
-        return send_from_directory(os.path.join(root_dir, 'Hackathon', 'client', 'build'), filename)
+        return send_from_directory(os.path.join(root_dir, folder_name, 'client', 'build'), filename)
     else:
-        return send_from_directory(os.path.join(root_dir, 'Hackathon', 'client', 'build'), 'index.html')
+        return send_from_directory(os.path.join(root_dir, folder_name, 'client', 'build'), 'index.html')
 
 
 @flask_app.route('/static/css/<path:filename>')
 def serve_static_static_css(filename):
     root_dir = os.path.dirname(os.getcwd())
-    return send_from_directory(os.path.join(root_dir, 'Hackathon', 'client', 'build', 'static', 'css'), filename)
+    return send_from_directory(os.path.join(root_dir, folder_name, 'client', 'build', 'static', 'css'), filename)
 
 
 @flask_app.route('/static/js/<path:filename>')
 def serve_static_static_js(filename):
     root_dir = os.path.dirname(os.getcwd())
-    return send_from_directory(os.path.join(root_dir, 'Hackathon', 'client', 'build', 'static', 'js'), filename)
+    return send_from_directory(os.path.join(root_dir, folder_name, 'client', 'build', 'static', 'js'), filename)
 
 
 @flask_app.route('/static/media/<path:filename>')
 def serve_static_static_media(filename):
     root_dir = os.path.dirname(os.getcwd())
-    return send_from_directory(os.path.join(root_dir, 'Hackathon', 'client', 'build', 'static', 'media'), filename)
+    return send_from_directory(os.path.join(root_dir, folder_name, 'client', 'build', 'static', 'media'), filename)
 
 
 @flask_app.route('/api/party/<id>')
