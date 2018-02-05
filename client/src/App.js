@@ -93,7 +93,15 @@ const party = {
 const getYouTubeVideoId = (link) => {
     const re = /\?v=(.*)/;
 
-    return re.exec(link)[1] || 0 / 0;
+    if(!re.exec(link)[1]) {
+
+        console.log('https://www.youtube.com/watch?v=' + link);
+
+        return 'https://www.youtube.com/watch?v=' + link
+
+    } else {
+        return re.exec(link)[1];
+    }
 };
 
 class Player extends Component {
@@ -102,8 +110,38 @@ class Player extends Component {
 
         this.state = {
             currentSong: 0,
-            list: party.list
-        }
+            list: []
+        };
+
+        this.getParty = (id) => {
+
+            console.log(this);
+
+            if(id) {
+                fetch(`http://localhost/api/party/${id}`, {
+                    headers: {
+                        'Authorization': 'JWT '+ JSON.parse(localStorage.auth).token
+                    }
+                })
+                    .then((response) => {
+                        if (response.status >= 400) {
+                            throw new Error("Bad response from server");
+                        }
+
+                        return response.json();
+                    })
+                    .then((party) => {
+
+                        console.log(party.party.songs.songs);
+
+                        this.setState({
+                            list: party.party.songs.songs
+                        });
+                    });
+            }
+        };
+
+        this.getParty(props.match.params.id);
     }
 
     render() {
@@ -133,9 +171,9 @@ class Player extends Component {
                         <Table>
                             <TableBody>
                                 {this.state.list.map((song, index) => (
-                                    <TableRow key={song.name + index}>
+                                    <TableRow key={song._id + index}>
                                         <TableCell
-                                            className={index === 0 ? 'currentSong' : ''}>{song.name}>{song.name}</TableCell>
+                                            className={index === 0 ? 'currentSong' : ''}>{song.artist_name}>{song.song_name}>{song.link}</TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>
@@ -146,8 +184,8 @@ class Player extends Component {
                     {/*className={song.name === this.state.list[this.state.currentSong].name ? 'currentSong' : ''}>{song.name}</div>))}*/}
                 </div>
                 <div className={'Player'}>
-                    <YouTube
-                        videoId={getYouTubeVideoId(this.state.list[this.state.currentSong].link)}
+                    {this.state.list.length > 0 && <YouTube
+                        videoId={this.state.list[this.state.currentSong].link}
                         opts={opts}
                         onReady={this._onReady}
                         onEnd={() => {
@@ -160,7 +198,7 @@ class Player extends Component {
                                 list: newList
                             }));
                         }}
-                    />
+                    />}
                 </div>
 
             </div>
@@ -189,7 +227,7 @@ class Login extends Component {
                 })
                 .then(function (token) {
 
-                    window.location.href = `http://localhost:3000/login`;
+                    window.location.href = `http://localhost/login`;
 
                     localStorage.setItem('auth', JSON.stringify(token));
 
@@ -241,6 +279,14 @@ class Login extends Component {
 }
 
 class UserPage extends Component {
+    constructor(props) {
+        super(props);
+
+        this.state = {
+           newPartyId: null
+        };
+    }
+
     render() {
         return (
             <div>
@@ -250,11 +296,16 @@ class UserPage extends Component {
 
                     <div style={{color: 'white'}} onClick={() => {
 
-                        fetch('http://localhost/party', {
+                        const parentObj = this;
+
+                        fetch('http://localhost/api/party', {
                             method: 'post',
                             headers: {
-                                'Authorization': 'JWT '+ JSON.stringify(localStorage.auth).token
-                            }
+                                'Authorization': 'JWT '+ JSON.parse(localStorage.auth).token
+                            },
+                            body: JSON.stringify( {
+                                name: 'New party'
+                            } )
                         })
                             .then(function (response) {
                                 if (response.status >= 400) {
@@ -265,10 +316,17 @@ class UserPage extends Component {
                                 return response.json();
                             })
                             .then(function (token) {
+
+                                parentObj.setState({
+                                    newPartyId: token.response.id
+                                });
+
                                 console.log(token);
                             });
 
                     }}>Add new party</div>
+
+                    {this.state.newPartyId && <Redirect to={`/party/${this.state.newPartyId}`}/>}
 
                 </div> : <Redirect to={'/login'}/>
                 }
@@ -287,6 +345,7 @@ class App extends Component {
                         <Route exact path="/" component={Player}/>
                         <Route path="/login" component={Login}/>
                         <Route path="/me" component={UserPage}/>
+                        <Route path="/party/:id" component={Player}/>
                     </div>
                 </Router>
 
