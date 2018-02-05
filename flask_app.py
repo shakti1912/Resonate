@@ -65,7 +65,7 @@ jwt_auth = JWT(flask_app, authenticate, identity)
 
 flask_app.config['SECRET_KEY'] = 'super-secret'
 
-folder_name = 'Hackathon'
+folder_name = 'PythonDeployment'
 
 @flask_app.route('/<path:filename>')
 def serve_static(filename):
