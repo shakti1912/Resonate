@@ -65,3 +65,7 @@
 .App {
     max-height: 100vh;
 }
+
+body {
+    background-color: #424242;
+}
