@@ -357,7 +357,7 @@ def get_youtube_link_for_song(artist_name, song_name, email):
 @flask_app.route('/')
 def serve_static_index():
     root_dir = os.path.dirname(os.getcwd())
-    return send_from_directory(os.path.join(root_dir, 'Hackathon', 'client', 'build'), 'index.html')
+    return send_from_directory(os.path.join(root_dir, folder_name, 'client', 'build'), 'index.html')
 
 
 if __name__ == '__main__':
