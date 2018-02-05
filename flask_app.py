@@ -23,6 +23,10 @@ from werkzeug.security import safe_str_cmp
 from bson.objectid import ObjectId
 from bson.json_util import dumps
 
+import sys
+
+server = sys.argv[1:] if sys.argv[1:] != [] else 'https://jbox.live/'
+
 #  Client Keys
 CLIENT_ID = "f593d8a2348948c5a1fb8dea345ff106"
 CLIENT_SECRET = "ba54399bb5f14c0bb6bbcdd25088bd71"
@@ -35,7 +39,7 @@ API_VERSION = "v1"
 SPOTIFY_API_URL = "{}/{}".format(SPOTIFY_API_BASE_URL, API_VERSION)
 
 # Server-side Parameters
-CLIENT_SIDE_URL = "http://localhost"
+CLIENT_SIDE_URL = server
 PORT = 80
 REDIRECT_URI = "{}/login".format(CLIENT_SIDE_URL)
 SCOPE = "user-read-private user-read-birthdate user-read-email user-library-read"

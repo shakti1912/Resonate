@@ -13,10 +13,11 @@ import {
     Redirect
 } from 'react-router-dom'
 
-
 import YouTube from 'react-youtube';
 
 import {MuiThemeProvider, createMuiTheme} from 'material-ui/styles';
+
+const server = 'http://jbox.live';
 
 const theme = createMuiTheme({
     palette: {
@@ -118,7 +119,7 @@ class Player extends Component {
             console.log(this);
 
             if(id) {
-                fetch(`http://localhost/api/party/${id}`, {
+                fetch(`${server}/api/party/${id}`, {
                     headers: {
                         'Authorization': 'JWT '+ JSON.parse(localStorage.auth).token
                     }
@@ -216,7 +217,7 @@ class Login extends Component {
 
         if (code) {
 
-            fetch(`http://localhost/api/login/spotify?code=${code}`)
+            fetch(`${server}/api/login/spotify?code=${code}`)
                 .then(function (response) {
                     if (response.status >= 400) {
                         throw new Error("Bad response from server");
@@ -227,7 +228,7 @@ class Login extends Component {
                 })
                 .then(function (token) {
 
-                    window.location.href = `http://localhost/login`;
+                    window.location.href = `${server}/login`;
 
                     localStorage.setItem('auth', JSON.stringify(token));
 
@@ -298,7 +299,7 @@ class UserPage extends Component {
 
                         const parentObj = this;
 
-                        fetch('http://localhost/api/party', {
+                        fetch(`${server}/api/party`, {
                             method: 'post',
                             headers: {
                                 'Authorization': 'JWT '+ JSON.parse(localStorage.auth).token
@@ -339,9 +340,9 @@ class App extends Component {
     render() {
         return (
             <MuiThemeProvider theme={theme}>
-
                 <Router>
                     <div>
+                        <Header/>
                         <Route exact path="/" component={Player}/>
                         <Route path="/login" component={Login}/>
                         <Route path="/me" component={UserPage}/>
@@ -353,6 +354,19 @@ class App extends Component {
                 <div style={{color: 'white'}}>Logged in as {JSON.parse(localStorage.auth).email}</div>}
 
             </MuiThemeProvider>
+        );
+    }
+}
+
+class Header extends Component {
+    render() {
+        return (
+            <div style={{color: 'white'}}>
+                <Link  style={{color: 'white'}} to={'/login'}>Login</Link>
+                <span>Logout</span>
+                <Link  style={{color: 'white'}} to={'/me'}>Create party</Link>
+                <Link  style={{color: 'white'}} to={'/'}>Join party</Link>
+            </div>
         );
     }
 }
