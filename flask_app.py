@@ -363,4 +363,5 @@ def serve_static_index():
 
 
 if __name__ == '__main__':
-    flask_app.run(debug=True, host='0.0.0.0', port=80)
+    flask_app.run(threaded=True, debug=True, host='0.0.0.0', port=80)
+    # https://stackoverflow.com/questions/14814201/can-i-serve-multiple-clients-using-just-flask-app-run-as-standalone
