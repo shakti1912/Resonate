@@ -223,6 +223,8 @@ class Login extends Component {
 
         if (code) {
 
+            this.setState({loader: true});
+
             fetch(`${server}/api/login/spotify?code=${code}`)
                 .then(function (response) {
                     if (response.status >= 400) {
@@ -243,42 +245,63 @@ class Login extends Component {
         }
     }
 
+    constructor(props) {
+        super(props);
+
+        this.state = {
+            loader: false
+        }
+    }
+
     render() {
         return (
             <div>
-                {!localStorage.auth ? <div>
+                {this.state.loader ? <div style={{marginTop: '50%'}}>
 
-                    <div className={'Header'}><h1>Connect your music libraries</h1></div>
-
-                    <div style={{textAlign: 'center', marginTop: 25}} onClick={() => {
-
-                        // fetch('https://accounts.spotify.com/authorize?client_id=f593d8a2348948c5a1fb8dea345ff106&response_type=code&redirect_uri=http://18.221.244.159/api/login/spotify', { mode: 'no-cors' })
-                        //     .then(function(response) {
-                        //         if (response.status >= 400) {
-                        //             throw new Error("Bad response from server");
-                        //         }
-                        //         return response.json();
-                        //     })
-                        //     .then(function(stories) {
-                        //         console.log(stories);
-                        //     });
-
-                        window.location.href = `https://accounts.spotify.com/authorize?client_id=f593d8a2348948c5a1fb8dea345ff106&scope=user-read-private user-read-email user-library-read&response_type=code&redirect_uri=${window.location.href}`;
-
-
-                    }}>
-
-                        <img width={'100px'}
-                             src={'https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Spotify_logo_with_text.svg/2000px-Spotify_logo_with_text.svg.png'}/>
-
+                    <div className="loader">
+                        <svg className="circular" viewBox="25 25 50 50">
+                            <circle className="path" cx="50" cy="50" r="20" fill="none" strokeWidth="2"
+                                    strokeMiterlimit="10"/>
+                        </svg>
                     </div>
 
+                    <div style={{color: 'white', fontWeight: 'bold', textAlign: 'center'}}>Loading your credentials</div>
+
                 </div> : <div>
-                    {/*<div className={'Header'} onClick={() => {*/}
-                    {/*localStorage.removeItem('auth');*/}
-                    {/*window.location.reload();*/}
-                    {/*}}><h1>Log out</h1></div>*/}
-                    <Redirect to={'me'}/>
+                    {!localStorage.auth ? <div>
+
+                        <div className={'Header'}><h1>Connect your music libraries</h1></div>
+
+                        <div style={{textAlign: 'center', marginTop: 25}} onClick={() => {
+
+                            // fetch('https://accounts.spotify.com/authorize?client_id=f593d8a2348948c5a1fb8dea345ff106&response_type=code&redirect_uri=http://18.221.244.159/api/login/spotify', { mode: 'no-cors' })
+                            //     .then(function(response) {
+                            //         if (response.status >= 400) {
+                            //             throw new Error("Bad response from server");
+                            //         }
+                            //         return response.json();
+                            //     })
+                            //     .then(function(stories) {
+                            //         console.log(stories);
+                            //     });
+
+                            window.location.href = `https://accounts.spotify.com/authorize?client_id=f593d8a2348948c5a1fb8dea345ff106&scope=user-read-private user-read-email user-library-read&response_type=code&redirect_uri=${window.location.href}`;
+
+                        }}>
+
+                            <img width={'100px'}
+                                 src={'https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Spotify_logo_with_text.svg/2000px-Spotify_logo_with_text.svg.png'}/>
+
+                        </div>
+
+                    </div> : <div>
+                        {/*<div className={'Header'} onClick={() => {*/}
+                        {/*localStorage.removeItem('auth');*/}
+                        {/*window.location.reload();*/}
+                        {/*}}><h1>Log out</h1></div>*/}
+                        <Redirect to={'me'}/>
+                    </div>
+                    }
                 </div>
                 }
             </div>
@@ -375,7 +398,7 @@ class UserPage extends Component {
 }
 
 class App extends Component {
-    constructor(props){
+    constructor(props) {
         super(props);
 
         this.state = {
@@ -412,9 +435,9 @@ class App extends Component {
                     display: 'inline-block',
                     verticalAlign: 'middle'
                 }}
-                onClick={() => {
-                    this.setState(prevState => ({visible: !prevState.visible}));
-                }}
+                     onClick={() => {
+                         this.setState(prevState => ({visible: !prevState.visible}));
+                     }}
                 ><img style={{marginTop: 10}} height='30' src={menu}/></div>
                 <div className={'theMenu ' + (this.state.visible ? 'out' : '')} onClick={() => {
                     this.setState(prevState => ({visible: !prevState.visible}));
