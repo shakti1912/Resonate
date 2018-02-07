@@ -67,6 +67,7 @@ flask_app.config['SECRET_KEY'] = 'super-secret'
 
 folder_name = 'Hackathon'
 
+
 @flask_app.route('/<path:filename>')
 def serve_static(filename):
     root_dir = os.path.dirname(os.path.realpath(__file__))
@@ -104,32 +105,49 @@ def get_party(id):
     # 1. Use current_identity to see if the user already assigned to the party (DB -> party -> people)
     # 2. If the user is in the party - proceed normally
 
-    partyCursor = conn.get_parties_collection().find({'_id': ObjectId(id)}, {"_id": 1, "songs": 1, "name": 1}).limit(1)
+    person_cursor = conn.get_parties_collection().find({"people": {"$in": current_identity}})
 
-    if partyCursor.count() > 0:
+    if person_cursor is not None:
 
-        party = partyCursor.__getitem__(0)
+        partyCursor = conn.get_parties_collection().find({'_id': ObjectId(id)},
+                                                         {"_id": 1, "songs": 1, "name": 1}).limit(1)
 
-        response = Response(
-            response=dumps({"party": party}),
-            status=200,
-            mimetype='application/json'
-        )
+        if partyCursor.count() > 0:
+
+            party = partyCursor.__getitem__(0)
+
+            response = Response(
+                response=dumps({"party": party}),
+                status=200,
+                mimetype='application/json'
+            )
+
+        else:
+
+            response = Response(
+                response=json.dumps({"error": "Requested party does not exist"}),
+                status=400,
+                mimetype='application/json'
+            )
+
+        return response
 
     else:
+        user = conn.get_users_collection().find({"email": current_identity})
+        user_songs = user["songs"]
+        party_cursor = conn.get_parties_collection().find({'_id': ObjectId(id)},
+                                                          {"_id": 1, "songs": 1, "name": 1})
+        if party_cursor.count() > 0:
+            party = party_cursor.__getitem__(0)
+            (party["songs"]["songs"]).append(user_songs)
 
-        response = Response(
-            response=json.dumps({"error": "Requested party does not exist"}),
-            status=400,
-            mimetype='application/json'
-        )
+            conn.get_users_collection().update({"email": current_identity}, {"$push": {"people": user["email"]}})
 
-    return response
 
-    # 3. If the user is not in the party:
-    #   3a. Get users music by email
-    #   3b. Add users music to the party
-    #   3c. Add user to the list of people at the party
+            # 3. If the user is not in the party:
+            #   3a. Get users music by email
+            #   3b. Add users music to the party
+            #   3c. Add user to the list of people at the party
 
 
 @flask_app.route('/api/party', methods=['POST'])
@@ -154,7 +172,8 @@ def create_party():
     partyId = conn.get_parties_collection().insert({
         'name': json.loads(request.data)['name'],
         'host': '%s' % current_identity,
-        'songs': songsList
+        'songs': songsList,
+        'people': [].append(current_identity)
     })
 
     response = Response(
@@ -166,10 +185,80 @@ def create_party():
     return response
 
 
-def worker(token):
-    """thread worker function"""
-    print 'Worker'
-    return
+@flask_app.route('/api/parties')
+@jwt_required()
+def get_all_parties():
+    # Add party to DB
+
+    # 1. Add party to DB
+    # {
+    #   id: %auto_assigned%,
+    #   name: request.data.party,
+    #   host: current_identity,
+    #   songs: [from host's songs]
+    # }
+    # 2. Add the user (current_identity) as the party host
+    # 3. Return party ID
+
+    partiesCursor = conn.get_parties_collection().find({}, {"_id": 1, "name": 1, "email": 1})
+
+    partiesList = list(partiesCursor) if partiesCursor.count() > 0 else []
+
+    response = Response(
+        response=dumps({"parties": partiesList}),
+        status=200,
+        mimetype='application/json'
+    )
+
+    return response
+
+
+@flask_app.route('/api/party/<id>/join', methods=['POST'])
+@jwt_required()
+def guest_join_party(id):
+    # add current user(guest) to the party
+    party = conn.get_parties_collection().find({'_id': ObjectId(id)})
+    if party is not None:
+        print "shakti"
+        conn.get_parties_collection().update({"_id": ObjectId(id)}, {"$push": {"people": '%s' % current_identity}})
+        print "singh"
+        response = Response(
+            response=dumps({"status": "Current user %s added to the party" % current_identity}),
+            status=200,
+            mimetype='application/json'
+        )
+    else:
+        response = Response(
+            response=dumps({"status": "Current user %s not in the party" % current_identity}),
+            status=200,
+            mimetype='application/json'
+        )
+    return response
+
+
+@flask_app.route('/api/party/<id>/leave', methods=['POST'])
+@jwt_required()
+def guest_leave_party(id):
+    # remove current user(guest) from the party
+    print " shakti"
+    party = conn.get_parties_collection().find({'_id': ObjectId(id)})
+    if party is not None:
+        print "singh"
+        conn.get_parties_collection().update({'_id': ObjectId(id)},
+                                             {'$pull': {'people': '%s' % current_identity}})
+        print "rathore"
+        response = Response(
+            response= dumps({"status": "Current user %s removed from the party" % current_identity}),
+            status=200,
+            mimetype='application/json'
+        )
+    else:
+        response = Response(
+            response=dumps({"status": "Current user %s not in the party" % current_identity}),
+            status=200,
+            mimetype='application/json'
+        )
+    return response
 
 
 # returns jwt token
@@ -190,8 +279,8 @@ def sign_up():
     headers = {"Authorization": "Basic {}".format(base64encoded)}
     post_request = requests.post(SPOTIFY_TOKEN_URL, data=code_payload, headers=headers)
 
-    print REDIRECT_URI
-    print base64encoded
+    print "REDIRECT_URI"
+    print "base64encoded"
 
     # Auth Step 5: Tokens are Returned to Application
     response_data = json.loads(post_request.text)
@@ -319,7 +408,6 @@ def update_songs(email, r):
     songs = []
 
     for item in items:
-
         song_name = item['track']['name']
 
         artist_name = item['track']['artists'][0]['name']  # artist name
@@ -333,20 +421,21 @@ def update_songs(email, r):
 
         # songs.append(songs_details)
 
-    # conn.get_users_collection().update({"email": email}, {"$set": {"songs": songs}})
+        # conn.get_users_collection().update({"email": email}, {"$set": {"songs": songs}})
 
 
 def get_youtube_link_for_song(artist_name, song_name, email):
-
     f = {'q': artist_name + ' ' + song_name}
 
     http_connection = httplib.HTTPSConnection('www.googleapis.com')
-    http_connection.request('GET', '/youtube/v3/search?part=snippet&' + urllib.urlencode(f) + '&limit=1&key=AIzaSyC8wfOCE8GxXR2rL1943C7CIVIHb49EbrQ')
+    http_connection.request('GET', '/youtube/v3/search?part=snippet&' + urllib.urlencode(
+        f) + '&limit=1&key=AIzaSyC8wfOCE8GxXR2rL1943C7CIVIHb49EbrQ')
     response = http_connection.getresponse()
     data = response.read()  # same as r.text in 3.x
     song_link = json.loads(data)['items'][0]['id']['videoId']
 
-    print '/youtube/v3/search?part=snippet&q=' + urllib.urlencode(f) + '&limit=1&key=AIzaSyC8wfOCE8GxXR2rL1943C7CIVIHb49EbrQ'
+    print '/youtube/v3/search?part=snippet&q=' + urllib.urlencode(
+        f) + '&limit=1&key=AIzaSyC8wfOCE8GxXR2rL1943C7CIVIHb49EbrQ'
     print song_link
 
     song_details = {"song_name": song_name, "artist_name": artist_name, 'link': song_link}
