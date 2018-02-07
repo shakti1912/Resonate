@@ -8,9 +8,6 @@ import profile from './user.svg';
 import menu from './menu.svg';
 import './App.css';
 import fetch from 'isomorphic-fetch';
-import {withStyles} from 'material-ui/styles';
-import Table, {TableBody, TableCell, TableHead, TableRow} from 'material-ui/Table';
-import Paper from 'material-ui/Paper';
 
 import {
     BrowserRouter as Router,
@@ -117,7 +114,10 @@ class Player extends Component {
 
         this.state = {
             currentSong: 0,
-            list: []
+            party: null,
+            list: [],
+            partyName: '',
+            host: ''
         };
 
         this.getParty = (id) => {
@@ -137,12 +137,15 @@ class Player extends Component {
 
                         return response.json();
                     })
-                    .then((party) => {
+                    .then((json) => {
 
-                        console.log(party.party.songs.songs);
+                        const party = json.party;
 
                         this.setState({
-                            list: party.party.songs.songs
+                            list: party.songs.songs,
+                            partyName: party.name,
+                            host: party.host,
+                            party: party
                         });
                     });
             }
@@ -172,42 +175,38 @@ class Player extends Component {
                 {/*To get started, edit <code>src/App.js</code> and save to reload.*/}
                 {/*</p>*/}
 
-                <div className={'Header'}><h1>{party.name}</h1></div>
-                <div className={'List'}>
-                    <Paper>
-                        <Table>
-                            <TableBody>
-                                {this.state.list.map((song, index) => (
-                                    <TableRow key={song._id + index}>
-                                        <TableCell
-                                            className={index === 0 ? 'currentSong' : ''}>{song.artist_name}>{song.song_name}>{song.link}</TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </Paper>
+                {this.state.party &&
+                <div>
+                    <div className={'Header'}><h1>{this.state.partyName || `${this.state.host}'s party`}</h1></div>
+                    <div className={'List'}>
+                        {this.state.list.map((song, index) => (
+                            <div key={song._id + index}
+                                 className={index === 0 ? 'currentSong' : ''}>{song.artist_name}>{song.song_name}>{song.link}
+                            </div>
+                        ))}
 
-                    {/*{this.state.list.map(song => (<div*/}
-                    {/*className={song.name === this.state.list[this.state.currentSong].name ? 'currentSong' : ''}>{song.name}</div>))}*/}
+                        {/*{this.state.list.map(song => (<div*/}
+                        {/*className={song.name === this.state.list[this.state.currentSong].name ? 'currentSong' : ''}>{song.name}</div>))}*/}
+                    </div>
+                    <div className={'Player'}>
+                        {this.state.list.length > 0 && <YouTube
+                            videoId={this.state.list[this.state.currentSong].link}
+                            opts={opts}
+                            onReady={this._onReady}
+                            onEnd={() => {
+
+                                let newList = this.state.list.slice();
+                                newList.push(newList.shift());
+
+                                this.setState((prevState) => ({
+                                    currentSong: prevState.currentSong,
+                                    list: newList
+                                }));
+                            }}
+                        />}
+                    </div>
                 </div>
-                <div className={'Player'}>
-                    {this.state.list.length > 0 && <YouTube
-                        videoId={this.state.list[this.state.currentSong].link}
-                        opts={opts}
-                        onReady={this._onReady}
-                        onEnd={() => {
-
-                            let newList = this.state.list.slice();
-                            newList.push(newList.shift());
-
-                            this.setState((prevState) => ({
-                                currentSong: prevState.currentSong,
-                                list: newList
-                            }));
-                        }}
-                    />}
-                </div>
-
+                }
             </div>
         );
     }
@@ -265,7 +264,8 @@ class Login extends Component {
                         </svg>
                     </div>
 
-                    <div style={{color: 'white', fontWeight: 'bold', textAlign: 'center'}}>Loading your credentials</div>
+                    <div style={{color: 'white', fontWeight: 'bold', textAlign: 'center'}}>Loading your credentials
+                    </div>
 
                 </div> : <div>
                     {!localStorage.auth ? <div>
@@ -314,47 +314,74 @@ class AddPartyPage extends Component {
         super(props);
 
         this.state = {
-            newPartyId: null
+            newPartyId: null,
+            partyNameInput: ''
         };
     }
 
     render() {
         return (
-            <div>
-                <label style={{color: 'white'}} htmlFor="party_name">Party name</label>
-                <input type="text" id="party_name"/>
+            <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '30%'}}>
 
-                <div style={{color: 'white'}} onClick={() => {
+                <div style={{position: 'relative'}}>
 
-                    const parentObj = this;
+                    <label style={{color: 'white', display: 'block', fontSize: 12, color: 'orange'}}
+                           htmlFor="party_name">Party name</label>
 
-                    fetch(`${server}/api/party`, {
-                        method: 'post',
-                        headers: {
-                            'Authorization': 'JWT ' + JSON.parse(localStorage.auth).token
-                        },
-                        body: JSON.stringify({
-                            name: 'New party'
+                    <input value={this.state.partyNameInput} onChange={(e) => {
+                        this.setState({partyNameInput: e.target.value});
+                    }} placeholder="My favorite party" type="text" id="party_name" style={{
+                        backgroundColor: 'transparent',
+                        border: 'none',
+                        borderBottom: '2px solid orange',
+                        height: 25,
+                        color: 'white',
+                        fontSize: 16
+                    }}/>
+
+                </div>
+
+                <div style={{marginTop: 15}}>
+
+                    <div style={{
+                        display: 'inline-block',
+                        padding: '8px 21px',
+                        border: '2px solid orange',
+                        color: 'orange',
+                        fontWeight: 'bold'
+                    }} onClick={() => {
+
+                        const parentObj = this;
+
+                        fetch(`${server}/api/party`, {
+                            method: 'post',
+                            headers: {
+                                'Authorization': 'JWT ' + JSON.parse(localStorage.auth).token
+                            },
+                            body: JSON.stringify({
+                                name: this.state.partyNameInput
+                            })
                         })
-                    })
-                        .then(function (response) {
-                            if (response.status >= 400) {
-                                throw new Error("Bad response from server");
-                            }
+                            .then(function (response) {
+                                if (response.status >= 400) {
+                                    throw new Error("Bad response from server");
+                                }
 
-                            console.log(response);
-                            return response.json();
-                        })
-                        .then(function (token) {
+                                console.log(response);
+                                return response.json();
+                            })
+                            .then(function (token) {
 
-                            parentObj.setState({
-                                newPartyId: token.response.id
+                                parentObj.setState({
+                                    newPartyId: token.response.id
+                                });
+
+                                console.log(token);
                             });
 
-                            console.log(token);
-                        });
+                    }}>Add new party
+                    </div>
 
-                }}>Add new party
                 </div>
 
                 {this.state.newPartyId && <Redirect to={`/party/${this.state.newPartyId}`}/>}
@@ -412,7 +439,7 @@ class App extends Component {
                 <Router>
                     <div>
                         <Header/>
-                        <Route exact path="/" component={Player}/>
+                        <Route exact path="/" component={UserPage}/>
                         <Route path="/login" component={Login}/>
                         <Route path="/me" component={UserPage}/>
                         <Route path="/newParty" component={AddPartyPage}/>
@@ -427,8 +454,8 @@ class App extends Component {
                     right: 25,
                     bottom: 25,
                     backgroundColor: 'orange',
-                    width: 50,
-                    height: 50,
+                    width: 60,
+                    height: 60,
                     borderRadius: '50%',
                     textAlign: 'center',
                     lineHeight: '44px',
@@ -438,7 +465,7 @@ class App extends Component {
                      onClick={() => {
                          this.setState(prevState => ({visible: !prevState.visible}));
                      }}
-                ><img style={{marginTop: 10}} height='30' src={menu}/></div>
+                ><img style={{marginTop: 15}} height='30' src={menu}/></div>
                 <div className={'theMenu ' + (this.state.visible ? 'out' : '')} onClick={() => {
                     this.setState(prevState => ({visible: !prevState.visible}));
                 }}></div>

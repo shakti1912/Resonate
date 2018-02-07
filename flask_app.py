@@ -67,6 +67,7 @@ flask_app.config['SECRET_KEY'] = 'super-secret'
 
 folder_name = 'Hackathon'
 
+
 @flask_app.route('/<path:filename>')
 def serve_static(filename):
     root_dir = os.path.dirname(os.path.realpath(__file__))
@@ -130,6 +131,64 @@ def get_party(id):
     #   3a. Get users music by email
     #   3b. Add users music to the party
     #   3c. Add user to the list of people at the party
+
+
+@flask_app.route('/api/me/info')
+@jwt_required()
+def get_user_info():
+    # Get my information from DB
+
+    userCursor = conn.get_users_collection().find({'email': '%s' % current_identity},
+                                                  {"songs": 1, "name": 1, "_id": 0}).limit(1)
+
+    if userCursor.count() > 0:
+
+        user = userCursor.__getitem__(0)
+
+        response = Response(
+            response=dumps({"user": user}),
+            status=200,
+            mimetype='application/json'
+        )
+
+    else:
+
+        response = Response(
+            response=json.dumps({"error": "Something went wrong. Please try again."}),
+            status=400,
+            mimetype='application/json'
+        )
+
+    return response
+
+
+@flask_app.route('/api/me/parties')
+@jwt_required()
+def get_user_parties():
+    # Get my information from DB
+
+    partiesCursor = conn.get_parties_collection().find({'host': '%s' % current_identity},
+                                                  {"_id": 1, "name": 1})
+
+    if partiesCursor.count() > 0:
+
+        parties = list(partiesCursor)
+
+        response = Response(
+            response=dumps({"parties": parties}),
+            status=200,
+            mimetype='application/json'
+        )
+
+    else:
+
+        response = Response(
+            response=json.dumps({"error": "Something went wrong. Please try again."}),
+            status=400,
+            mimetype='application/json'
+        )
+
+    return response
 
 
 @flask_app.route('/api/party', methods=['POST'])
@@ -319,7 +378,6 @@ def update_songs(email, r):
     songs = []
 
     for item in items:
-
         song_name = item['track']['name']
 
         artist_name = item['track']['artists'][0]['name']  # artist name
@@ -337,16 +395,17 @@ def update_songs(email, r):
 
 
 def get_youtube_link_for_song(artist_name, song_name, email):
-
     f = {'q': artist_name + ' ' + song_name}
 
     http_connection = httplib.HTTPSConnection('www.googleapis.com')
-    http_connection.request('GET', '/youtube/v3/search?part=snippet&' + urllib.urlencode(f) + '&limit=1&key=AIzaSyC8wfOCE8GxXR2rL1943C7CIVIHb49EbrQ')
+    http_connection.request('GET', '/youtube/v3/search?part=snippet&' + urllib.urlencode(
+        f) + '&limit=1&key=AIzaSyC8wfOCE8GxXR2rL1943C7CIVIHb49EbrQ')
     response = http_connection.getresponse()
     data = response.read()  # same as r.text in 3.x
     song_link = json.loads(data)['items'][0]['id']['videoId']
 
-    print '/youtube/v3/search?part=snippet&q=' + urllib.urlencode(f) + '&limit=1&key=AIzaSyC8wfOCE8GxXR2rL1943C7CIVIHb49EbrQ'
+    print '/youtube/v3/search?part=snippet&q=' + urllib.urlencode(
+        f) + '&limit=1&key=AIzaSyC8wfOCE8GxXR2rL1943C7CIVIHb49EbrQ'
     print song_link
 
     song_details = {"song_name": song_name, "artist_name": artist_name, 'link': song_link}

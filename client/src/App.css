@@ -199,3 +199,9 @@ color {  100%, 0% {
         stroke: #ffa700;
     }
 }
+
+input:focus{
+    outline: none;
+    border-color: red !important;
+    transition: border-color .3s;
+}
