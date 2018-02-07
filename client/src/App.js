@@ -18,15 +18,8 @@ import {
 
 import YouTube from 'react-youtube';
 
-import {MuiThemeProvider, createMuiTheme} from 'material-ui/styles';
-
-const server = 'http://jbox.live';
-
-const theme = createMuiTheme({
-    palette: {
-        type: 'dark', // Switching the dark mode on is a single property value change.
-    },
-});
+const server = 'http://localhost';
+// const server = 'http://jbox.live';
 
 const party = {
     name: 'Our first birthday party!',
@@ -122,22 +115,25 @@ class Player extends Component {
 
         this.getParty = (id) => {
 
-            console.log(this);
+            const address = (id ? `${server}/api/party/${id}` : `${server}/api/me/info`);
 
-            if (id) {
-                fetch(`${server}/api/party/${id}`, {
-                    headers: {
-                        'Authorization': 'JWT ' + JSON.parse(localStorage.auth).token
+            console.log(address);
+
+            fetch(address, {
+                headers: {
+                    'Authorization': 'JWT ' + JSON.parse(localStorage.auth).token
+                }
+            })
+                .then((response) => {
+                    if (response.status >= 400) {
+                        throw new Error("Bad response from server");
                     }
-                })
-                    .then((response) => {
-                        if (response.status >= 400) {
-                            throw new Error("Bad response from server");
-                        }
 
-                        return response.json();
-                    })
-                    .then((json) => {
+                    return response.json();
+                })
+                .then((json) => {
+
+                    if (json.party) {
 
                         const party = json.party;
 
@@ -147,11 +143,33 @@ class Player extends Component {
                             host: party.host,
                             party: party
                         });
-                    });
-            }
+
+                    } else {
+
+                        console.log(json);
+
+                        const party = json.user;
+
+                        this.setState({
+                            list: party.songs,
+                            partyName: 'My songs',
+                            host: '',
+                            party: party
+                        });
+
+                    }
+                });
         };
 
-        this.getParty(props.match.params.id);
+        if (props.match && props.match.params && props.match.params.id) {
+
+            this.getParty(props.match.params.id);
+
+        } else {
+
+            this.getParty();
+
+        }
     }
 
     render() {
@@ -177,10 +195,60 @@ class Player extends Component {
 
                 {this.state.party &&
                 <div>
-                    <div className={'Header'}><h1>{this.state.partyName || `${this.state.host}'s party`}</h1></div>
+                    {this.state.host} or {JSON.parse(localStorage.auth).email}
+                    <div className={'Header'}><h1>{this.state.partyName || `${this.state.host}'s party`}</h1>
+                        {this.props.match && <div style={{width: '100%', backgroundColor: 'orange', height: 25, color: 'white'}} onClick={() => {
+                            const address = `${server}/api/party/${this.props.match.params.id}/join`;
+
+                            console.log(address);
+
+                            fetch(address, {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': 'JWT ' + JSON.parse(localStorage.auth).token
+                                }
+                            })
+                                .then((response) => {
+                                    if (response.status >= 400) {
+                                        throw new Error("Bad response from server");
+                                    }
+
+                                    return response.json();
+                                })
+                                .then((json) => {
+                                    console.log(json);
+                                });
+                        }}>
+                            Add party
+                        </div>}
+                        {this.props.match && <div style={{width: '100%', backgroundColor: 'orange', height: 25, color: 'white'}} onClick={() => {
+                            const address = `${server}/api/party/${this.props.match.params.id}/leave`;
+
+                            console.log(address);
+
+                            fetch(address, {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': 'JWT ' + JSON.parse(localStorage.auth).token
+                                }
+                            })
+                                .then((response) => {
+                                    if (response.status >= 400) {
+                                        throw new Error("Bad response from server");
+                                    }
+
+                                    return response.json();
+                                })
+                                .then((json) => {
+                                    console.log(json);
+                                });
+                        }}>
+                            Leave party
+                        </div>}
+                    </div>
                     <div className={'List'}>
                         {this.state.list.map((song, index) => (
-                            <div key={song._id + index}
+                            <div key={song.link + index}
                                  className={index === 0 ? 'currentSong' : ''}>{song.artist_name}>{song.song_name}>{song.link}
                             </div>
                         ))}
@@ -417,7 +485,89 @@ class UserPage extends Component {
                     {localStorage.auth &&
                     <div style={{color: 'white'}}>Logged in as {JSON.parse(localStorage.auth).email}</div>}
 
+                    <Player/>
+
+                    <AllParties mine={true}/>
+
                 </div> : <Redirect to={'/login'}/>
+                }
+            </div>
+        );
+    }
+}
+
+class AllParties extends Component {
+    constructor(props) {
+        super(props);
+
+        this.state = {
+            parties: []
+        };
+
+        this.getAllParties = () => {
+
+            const address = this.props.mine ? `${server}/api/me/parties` : `${server}/api/parties`;
+
+            console.log(address);
+
+            fetch(address, {
+                headers: {
+                    'Authorization': 'JWT ' + JSON.parse(localStorage.auth).token
+                }
+            })
+                .then((response) => {
+                    if (response.status >= 400) {
+                        throw new Error("Bad response from server");
+                    }
+
+                    return response.json();
+                })
+                .then((json) => {
+
+                    if (json.parties) {
+
+                        const parties = json.parties;
+
+                        this.setState({
+                            parties: parties
+                        });
+
+                    }
+                });
+        };
+
+        this.getAllParties();
+
+    }
+
+    render() {
+
+        return (
+            <div className="App" style={{display: 'flex', flexDirection: 'column'}}>
+
+                {/*<header className="App-header">*/}
+                {/*<img src={logo} className="App-logo" alt="logo" />*/}
+                {/*<h1 className="App-title">Welcome to React</h1>*/}
+                {/*</header>*/}
+                {/*<p className="App-intro">*/}
+                {/*To get started, edit <code>src/App.js</code> and save to reload.*/}
+                {/*</p>*/}
+
+                {this.state.parties &&
+                <div>
+                    <div className={'Header'}><h1>{this.props.mine ? 'My parties' : 'All Parties'}</h1></div>
+                    <div className={'List'}>
+                        {this.state.parties.map((party, index) => (
+                            <Link to={`/party/${party._id['$oid']}`}>
+                                <div key={party._id['$oid']}>{party.name}
+                                </div>
+                            </Link>
+                        ))}
+
+                        {/*{this.state.list.map(song => (<div*/}
+                        {/*className={song.name === this.state.list[this.state.currentSong].name ? 'currentSong' : ''}>{song.name}</div>))}*/}
+                    </div>
+                </div>
                 }
             </div>
         );
@@ -435,7 +585,7 @@ class App extends Component {
 
     render() {
         return (
-            <MuiThemeProvider theme={theme}>
+            <div>
                 <Router>
                     <div>
                         <Header/>
@@ -443,6 +593,7 @@ class App extends Component {
                         <Route path="/login" component={Login}/>
                         <Route path="/me" component={UserPage}/>
                         <Route path="/newParty" component={AddPartyPage}/>
+                        <Route path="/parties" component={AllParties}/>
                         <Route path="/party/:id" component={Player}/>
                     </div>
                 </Router>
@@ -469,7 +620,7 @@ class App extends Component {
                 <div className={'theMenu ' + (this.state.visible ? 'out' : '')} onClick={() => {
                     this.setState(prevState => ({visible: !prevState.visible}));
                 }}></div>
-            </MuiThemeProvider>
+            </div>
         );
     }
 }
@@ -489,7 +640,7 @@ class Header extends Component {
                 {localStorage.auth &&
                 <Link style={{color: 'white', height: 35}} to={'/newParty'}><img height="35" src={add}/></Link>}
                 {localStorage.auth &&
-                <Link style={{color: 'white', height: 35}} to={'/'}><img height="35" src={enter}/></Link>}
+                <Link style={{color: 'white', height: 35}} to={'/parties'}><img height="35" src={enter}/></Link>}
                 {localStorage.auth &&
                 <Link style={{color: 'white', height: 35}} to={'/me'}><img height="35" src={profile}/></Link>}
                 {!localStorage.auth &&

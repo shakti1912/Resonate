@@ -156,7 +156,7 @@ def get_user_info():
     # Get my information from DB
 
     userCursor = conn.get_users_collection().find({'email': '%s' % current_identity},
-                                                  {"songs": 1, "name": 1, "_id": 0}).limit(1)
+                                                  {"songs": 1, "name": 1, "_id": 1}).limit(1)
 
     if userCursor.count() > 0:
 
