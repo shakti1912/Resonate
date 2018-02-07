@@ -18,8 +18,8 @@ import {
 
 import YouTube from 'react-youtube';
 
-const server = 'http://localhost';
-// const server = 'http://jbox.live';
+// const server = 'http://localhost';
+const server = 'http://jbox.live';
 
 const party = {
     name: 'Our first birthday party!',
