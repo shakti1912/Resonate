@@ -13,6 +13,7 @@ import json
 import jwt
 import threading
 import httplib
+import timeit
 
 from pathlib import Path
 from flask_cors import CORS, cross_origin
@@ -143,7 +144,6 @@ def get_party(id):
 
             conn.get_users_collection().update({"email": current_identity}, {"$push": {"people": user["email"]}})
 
-
             # 3. If the user is not in the party:
             #   3a. Get users music by email
             #   3b. Add users music to the party
@@ -185,7 +185,7 @@ def get_user_parties():
     # Get my information from DB
 
     partiesCursor = conn.get_parties_collection().find({'host': '%s' % current_identity},
-                                                  {"_id": 1, "name": 1})
+                                                       {"_id": 1, "name": 1})
 
     if partiesCursor.count() > 0:
 
@@ -275,47 +275,136 @@ def get_all_parties():
 @jwt_required()
 def guest_join_party(id):
     # add current user(guest) to the party
-    party = conn.get_parties_collection().find({'_id': ObjectId(id)})
-    if party is not None:
-        print "shakti"
-        conn.get_parties_collection().update({"_id": ObjectId(id)}, {"$push": {"people": '%s' % current_identity}})
-        print "singh"
+    partyCursor = conn.get_parties_collection().find({'_id': ObjectId(id)})
+
+    party = None
+
+    print '-1'
+
+    email = '%s' % current_identity
+
+    print '-2'
+
+    if partyCursor.count() > 0:
+        party = partyCursor.__getitem__(0)
+
+    # print list(party['people']).index('asd')
+
+    # code you want to evaluate
+    if party is not None and email not in list(party['people']):
+
+        print '0'
+
+        conn.get_parties_collection().update({"_id": ObjectId(id)}, {"$push": {"people": email}})
+
+        print '1'
+
+        userCursor = conn.get_users_collection().find({"email": email})
+
+        print '2'
+
+        userSongs = userCursor.__getitem__(0)['songs']
+
+        partySongs = list(party['songs']['songs'])
+
+        def contains(list, filter):
+            for x in list:
+                if filter(x):
+                    return True
+
+            return False
+
+        for song in list(userSongs):
+            if contains(partySongs, lambda x: x['link'] == song['link']):
+                start_time = timeit.default_timer()
+                conn.get_parties_collection().update({"_id": ObjectId(id), "songs.songs.link": song["link"]},
+                                                     {'$inc': {"songs.songs.$.rank": 1}})
+                elapsed = timeit.default_timer() - start_time
+                print 'Elapsed %s' % elapsed
+            else:
+                song.pop('_id', None)
+                conn.get_parties_collection().update({"_id": ObjectId(id)}, {"$push": {"songs.songs": song}})
+
         response = Response(
-            response=dumps({"status": "Current user %s added to the party" % current_identity}),
+            response=dumps({"status": "User " + email + " was added to the party %s"}),
             status=200,
             mimetype='application/json'
         )
+
     else:
         response = Response(
-            response=dumps({"status": "Current user %s not in the party" % current_identity}),
-            status=200,
+            response=dumps({"status": "Party does not exist or the user is already in the party."}),
+            status=404,
             mimetype='application/json'
         )
+
     return response
 
 
 @flask_app.route('/api/party/<id>/leave', methods=['POST'])
 @jwt_required()
 def guest_leave_party(id):
-    # remove current user(guest) from the party
-    print " shakti"
-    party = conn.get_parties_collection().find({'_id': ObjectId(id)})
-    if party is not None:
-        print "singh"
-        conn.get_parties_collection().update({'_id': ObjectId(id)},
-                                             {'$pull': {'people': '%s' % current_identity}})
-        print "rathore"
+    # add current user(guest) to the party
+    partyCursor = conn.get_parties_collection().find({'_id': ObjectId(id)})
+
+    party = None
+
+    print '-1'
+
+    email = '%s' % current_identity
+
+    print '-2'
+
+    if partyCursor.count() > 0:
+        party = partyCursor.__getitem__(0)
+
+    # print list(party['people']).index('asd')
+
+    # code you want to evaluate
+    if party is not None and email in list(party['people']):
+
+        print '0'
+
+        conn.get_parties_collection().update({"_id": ObjectId(id)}, {"$pull": {"people": email}})
+
+        print '1'
+
+        userCursor = conn.get_users_collection().find({"email": email})
+
+        print '2'
+
+        userSongs = userCursor.__getitem__(0)['songs']
+
+        partySongs = list(party['songs']['songs'])
+
+        def containsNotOwned(list, filter):
+            for x in list:
+                if filter(x):
+                    return True
+
+            return False
+
+        for song in list(userSongs):
+            if containsNotOwned(partySongs, lambda x: x['link'] == song['link'] and x.get('rank', 0) > 1):
+                conn.get_parties_collection().update({"_id": ObjectId(id), "songs.songs.link": song["link"]},
+                                                     {'$inc': {"songs.songs.$.rank": -1}})
+            else:
+                song.pop('_id', None)
+                conn.get_parties_collection().update({"_id": ObjectId(id)}, {"$pull": {"songs.songs": song}})
+
         response = Response(
-            response= dumps({"status": "Current user %s removed from the party" % current_identity}),
+            response=dumps({"status": "User " + email + " was added to the party %s"}),
             status=200,
             mimetype='application/json'
         )
+
     else:
         response = Response(
-            response=dumps({"status": "Current user %s not in the party" % current_identity}),
-            status=200,
+            response=dumps({"status": "Party does not exist or the user is already in the party."}),
+            status=404,
             mimetype='application/json'
         )
+
     return response
 
 
