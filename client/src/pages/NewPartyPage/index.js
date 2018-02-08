@@ -1,6 +1,15 @@
 import React, {Component} from 'react';
-import { Redirect } from 'react-router-dom';
-import {getLoggedInUser} from "../../util";
+import {Redirect} from 'react-router-dom';
+import {getLoggedInUser, postAuthorized} from "../../util";
+
+const styles = {
+    'New-Party-Content': {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        marginTop: '30%'
+    }
+};
 
 class NewParty extends Component {
     constructor(props) {
@@ -14,65 +23,69 @@ class NewParty extends Component {
 
     render() {
         return (
-            <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '30%'}}>
+            <div style={styles['New-Party-Content']}>
 
                 <div style={{position: 'relative'}}>
 
-                    <label style={{color: 'white', display: 'block', fontSize: 12, color: 'orange'}}
-                           htmlFor="party_name">Party name</label>
+                    <label style={
+                        {
+                            display: 'block',
+                            fontSize: 12,
+                            color: 'orange'
+                        }
+                    }
+                           htmlFor="party_name">
+                        Party name
+                    </label>
 
-                    <input value={this.state.partyNameInput} onChange={(e) => {
-                        this.setState({partyNameInput: e.target.value});
-                    }} placeholder="My favorite party" type="text" id="party_name" style={{
-                        backgroundColor: 'transparent',
-                        border: 'none',
-                        borderBottom: '2px solid orange',
-                        height: 25,
-                        color: 'white',
-                        fontSize: 16
-                    }}/>
+                    <input value={this.state.partyNameInput}
+                           onChange={(e) => {
+                               this.setState({partyNameInput: e.target.value});
+                           }}
+                           placeholder="My favorite party"
+                           type="text"
+                           id="party_name"
+                           style={
+                               {
+                                   backgroundColor: 'transparent',
+                                   border: 'none',
+                                   borderBottom: '2px solid orange',
+                                   height: 25,
+                                   color: 'white',
+                                   fontSize: 16
+                               }
+                           }/>
 
                 </div>
 
                 <div style={{marginTop: 15}}>
 
-                    <div style={{
-                        display: 'inline-block',
-                        padding: '8px 21px',
-                        border: '2px solid orange',
-                        color: 'orange',
-                        fontWeight: 'bold'
-                    }} onClick={() => {
+                    <div style={
+                        {
+                            display: 'inline-block',
+                            padding: '8px 21px',
+                            border: '2px solid orange',
+                            color: 'orange',
+                            fontWeight: 'bold'
+                        }
+                    }
+                         onClick={() => {
 
-                        const parentObj = this;
+                             const parentObj = this;
 
-                        fetch(`${window.__server__}/api/party`, {
-                            method: 'post',
-                            headers: {
-                                'Authorization': 'JWT ' + getLoggedInUser().token
-                            },
-                            body: JSON.stringify({
-                                name: this.state.partyNameInput
-                            })
-                        })
-                            .then(function (response) {
-                                if (response.status >= 400) {
-                                    throw new Error("Bad response from server");
-                                }
+                             postAuthorized(`${window.__server__}/api/party`, JSON.stringify({
+                                 name: this.state.partyNameInput
+                             }))
+                                 .then(function (token) {
 
-                                console.log(response);
-                                return response.json();
-                            })
-                            .then(function (token) {
+                                     parentObj.setState({
+                                         newPartyId: token.response.id
+                                     });
 
-                                parentObj.setState({
-                                    newPartyId: token.response.id
-                                });
+                                 });
 
-                                console.log(token);
-                            });
-
-                    }}>Add new party
+                         }}>
+                        Add new party
                     </div>
 
                 </div>

@@ -23,15 +23,17 @@ from werkzeug.security import safe_str_cmp
 
 from bson.objectid import ObjectId
 from bson.json_util import dumps
+import os
 
 import sys
 
-server = sys.argv[1:] if sys.argv[1:] != [] else 'http://jbox.live'
+server = sys.argv[1:][0] if sys.argv[1:] != [] else 'http://jbox.live'
+print server
 
 #  Client Keys
-CLIENT_ID = "f593d8a2348948c5a1fb8dea345ff106"
-CLIENT_SECRET = "ba54399bb5f14c0bb6bbcdd25088bd71"
-
+CLIENT_ID = os.environ['JBOX_SPOTIFY_CLIENT_ID']  # f593d8a2348948c5a1fb8dea345ff106"
+CLIENT_SECRET = os.environ['JBOX_SPOTIFY_CLIENT_SECRET']  # "ba54399bb5f14c0bb6bbcdd25088bd71"
+YOUTUBE_API_KEY = os.environ['JBOX_YOUTUBE_API_KEY']
 # Spotify URLS
 SPOTIFY_AUTH_URL = "https://accounts.spotify.com/authorize"
 SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token"
@@ -50,7 +52,7 @@ SHOW_DIALOG_str = str(SHOW_DIALOG_bool).lower()
 
 flask_app = Flask(__name__)
 CORS(flask_app)
-flask_app.config['SECRET_KEY'] = 'dick'
+flask_app.config['SECRET_KEY'] = os.environ['JBOX_JWT_SECRET_KEY']  # 'dick'
 
 
 def authenticate(username, password):
@@ -63,10 +65,6 @@ def identity(payload):
 
 
 jwt_auth = JWT(flask_app, authenticate, identity)
-
-flask_app.config['SECRET_KEY'] = 'super-secret'
-
-folder_name = 'Hackathon'
 
 
 @flask_app.route('/<path:filename>')
@@ -511,7 +509,7 @@ def encode_auth_token(user_id):
         }
         return jwt.encode(
             payload,
-            "dick",
+            os.environ['JBOX_JWT_SECRET_KEY'],
             algorithm='HS256'
         )
     except Exception as e:
@@ -576,13 +574,13 @@ def get_youtube_link_for_song(artist_name, song_name, email):
 
     http_connection = httplib.HTTPSConnection('www.googleapis.com')
     http_connection.request('GET', '/youtube/v3/search?part=snippet&' + urllib.urlencode(
-        f) + '&limit=1&key=AIzaSyC8wfOCE8GxXR2rL1943C7CIVIHb49EbrQ')
+        f) + '&limit=1&key=' + YOUTUBE_API_KEY)
     response = http_connection.getresponse()
     data = response.read()  # same as r.text in 3.x
     song_link = json.loads(data)['items'][0]['id']['videoId']
 
     print '/youtube/v3/search?part=snippet&q=' + urllib.urlencode(
-        f) + '&limit=1&key=AIzaSyC8wfOCE8GxXR2rL1943C7CIVIHb49EbrQ'
+        f) + '&limit=1&key=' + YOUTUBE_API_KEY
     print song_link
 
     song_details = {"song_name": song_name, "artist_name": artist_name, 'link': song_link}
@@ -601,3 +599,10 @@ def serve_static_index():
 if __name__ == '__main__':
     flask_app.run(threaded=True, debug=True, host='0.0.0.0', port=80)
     # https://stackoverflow.com/questions/14814201/can-i-serve-multiple-clients-using-just-flask-app-run-as-standalone
+
+
+# order list based on rank
+def reorderList():
+    # conn.get_parties_collection().aggregate({"$sort": {'songs.songs.rank': 1}})
+    # conn.get_parties_collection().update({"$push": {"songs.songs": {"$each": [], "$sort": {"rank": 1}}}})
+    conn.get_parties_collection().update_many({}, {"$push": {"songs.songs": {"$each": [], "$sort": {"rank": 1}}}})

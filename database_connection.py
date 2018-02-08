@@ -1,11 +1,17 @@
 # connect to database and get something
 
 import pymongo
-import sys
+import os
 
-connection = pymongo.MongoClient("mongodb://18.221.244.159")
+print os.environ
 
-# connection = pymongo.MongoClient("mongodb://aflam:278S10thStreet@ec2-18-221-188-55.us-east-2.compute.amazonaws.com:27017")
+DATABASE_USERNAME = os.environ['JBOX_DATABASE_USERNAME']
+DATABASE_PASSWORD = os.environ['JBOX_DATABASE_PASSWORD']
+DATABASE_ADDRESS = os.environ['JBOX_DATABASE_ADDRESS']
+
+print 'mongodb://' + DATABASE_USERNAME + ':' + DATABASE_PASSWORD + '@' + DATABASE_ADDRESS
+
+connection = pymongo.MongoClient('mongodb://' + DATABASE_USERNAME + ':' + DATABASE_PASSWORD + '@' + DATABASE_ADDRESS + '/music')
 print connection
 
 db = connection.music

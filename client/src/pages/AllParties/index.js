@@ -1,11 +1,10 @@
 import React from 'react';
 import {Link} from 'react-router-dom';
+import {getAuthorizedJson} from "../../util";
 
 class AllPartiesPage extends React.PureComponent {
-
     constructor(props) {
-
-        super(props);
+        super();
 
         this.state = {
             parties: []
@@ -13,36 +12,17 @@ class AllPartiesPage extends React.PureComponent {
 
         this.getAllParties = () => {
 
-            const address = this.props.mine ? `${window.__server__}/api/me/parties` : `${window.__server__}/api/parties`;
+            const address = props.mine
+                ? `${window.__server__}/api/me/parties`
+                : `${window.__server__}/api/parties`;
 
-            console.log(address);
-
-            fetch(address, {
-                headers: {
-                    'Authorization': 'JWT ' + JSON.parse(localStorage.auth).token
-                }
-            })
-                .then((response) => {
-
-                    if (response.status >= 400) {
-                        throw new Error("Bad response from server");
-                    }
-
-                    return response.json();
-
-                })
+            getAuthorizedJson(address)
                 .then((json) => {
-
                     if (json.parties) {
-
-                        const parties = json.parties;
-
                         this.setState({
-                            parties: parties
+                            parties: json.parties
                         });
-
                     }
-
                 });
 
         };
@@ -55,28 +35,29 @@ class AllPartiesPage extends React.PureComponent {
 
         return (
 
-            <div className="App" style={{display: 'flex', flexDirection: 'column'}}>
+            <div className="App">
 
-                {this.state.parties &&
-                <div>
+                {
+                    this.state.parties
+                    && <div>
 
-                    <div className={'Header'}><h1>{this.props.mine ? 'My parties' : 'All Parties'}</h1></div>
+                        <div className={'Header'}>
+                            <h1>{this.props.mine ? 'My parties' : 'All Parties'}</h1>
+                        </div>
 
-                    <div className={'List'}>
-                        {this.state.parties.map(party => (
-
-                            <Link to={`/party/${party._id['$oid']}`}>
-                                <div key={party._id['$oid']}>
-                                    {party.name}
-                                </div>
-                            </Link>
-
-                        ))
-                        }
+                        <div className={'List'}>
+                            {
+                                this.state.parties.map(party => (
+                                    <Link to={`/party/${party._id['$oid']}`}>
+                                        <div key={party._id['$oid']}>
+                                            {party.name}
+                                        </div>
+                                    </Link>
+                                ))
+                            }
+                        </div>
 
                     </div>
-
-                </div>
                 }
 
             </div>

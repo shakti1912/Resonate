@@ -4,6 +4,7 @@ import './App.css';
 import MyProfilePage from './pages/MyProfile';
 import AllPartiesPage from './pages/AllParties';
 import UserLoginPage from './pages/UserLogin';
+import UserLogoutPage from './pages/UserLogout';
 import NewPartyPage from './pages/NewPartyPage';
 import PartyPage from './pages/Party';
 
@@ -27,12 +28,16 @@ class App extends Component {
                 <Router>
                     <div>
                         <TopMenu/>
+
+                        <UnauthorizedRoute path="/login" component={UserLoginPage}/>
+
                         <ProtectedRoute exact path="/" component={MyProfilePage}/>
-                        <Route path="/login" component={UserLoginPage}/>
                         <ProtectedRoute path="/me" component={MyProfilePage}/>
                         <ProtectedRoute path="/newParty" component={NewPartyPage}/>
                         <ProtectedRoute path="/parties" component={AllPartiesPage}/>
+                        <ProtectedRoute path="/logout" component={UserLogoutPage}/>
                         <ProtectedRoute path="/party/:id" component={PartyPage}/>
+
                         <DotMenu/>
                     </div>
                 </Router>
@@ -46,6 +51,14 @@ const ProtectedRoute = ({ component: Component, ...rest }) => (
         isLoggedIn()
             ? <Component {...props} />
             : <Redirect to='/login' />
+    )} />
+);
+
+const UnauthorizedRoute = ({ component: Component, ...rest }) => (
+    <Route {...rest} render={(props) => (
+        !isLoggedIn()
+            ? <Component {...props} />
+            : <Redirect to='/me' />
     )} />
 );
 

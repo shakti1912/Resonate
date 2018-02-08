@@ -1,23 +1,18 @@
 import React, {Component} from 'react';
-import YouTube from 'react-youtube';
-import {getLoggedInUser} from "../../util";
+import {getAuthorizedJson, getLoggedInUser, postAuthorized} from "../../util";
+import YoutubePlayer from "../../components/YoutubePlayer";
 
-
-const getYouTubeVideoId = (link) => {
-    const re = /\?v=(.*)/;
-
-    if (!re.exec(link)[1]) {
-
-        console.log('https://www.youtube.com/watch?v=' + link);
-
-        return 'https://www.youtube.com/watch?v=' + link
-
-    } else {
-        return re.exec(link)[1];
+const styles = {
+    'Header-Styles': {
+        width: '100%',
+        backgroundColor: 'orange',
+        height: 25,
+        color: 'white'
     }
 };
 
 class Party extends Component {
+
     constructor(props) {
         super(props);
 
@@ -31,22 +26,11 @@ class Party extends Component {
 
         this.getParty = (id) => {
 
-            const address = (id ? `${window.__server__}/api/party/${id}` : `${window.__server__}/api/me/info`);
+            const address = id
+                ? `${window.__server__}/api/party/${id}`
+                : `${window.__server__}/api/me/info`;
 
-            console.log(address);
-
-            fetch(address, {
-                headers: {
-                    'Authorization': 'JWT ' + getLoggedInUser().token
-                }
-            })
-                .then((response) => {
-                    if (response.status >= 400) {
-                        throw new Error("Bad response from server");
-                    }
-
-                    return response.json();
-                })
+            getAuthorizedJson(address)
                 .then((json) => {
 
                     if (json.party) {
@@ -62,8 +46,6 @@ class Party extends Component {
 
                     } else {
 
-                        console.log(json);
-
                         const party = json.user;
 
                         this.setState({
@@ -75,115 +57,80 @@ class Party extends Component {
 
                     }
                 });
+
         };
 
         if (props.match && props.match.params && props.match.params.id) {
-
             this.getParty(props.match.params.id);
-
         } else {
-
             this.getParty();
+        }
 
+        this.onSongEnd = () => {
+            let newList = this.state.list.slice();
+
+            newList.push(newList.shift());
+
+            this.setState((prevState) => ({
+                currentSong: prevState.currentSong,
+                list: newList
+            }));
         }
     }
 
     render() {
 
-        const opts = {
-            height: '390',
-            width: '640',
-            playerVars: { // https://developers.google.com/youtube/player_parameters
-                autoplay: 1
-            }
+        const getButton = (address, text) => {
+            return (<div style={styles['Header-Button']}
+                         onClick={() => {
+                             postAuthorized(address)
+                                 .then((json) => {
+                                     console.log(json);
+                                 });
+                         }}>
+                {text}
+            </div>)
         };
 
         return (
-            <div className="App" style={{display: 'flex', flexDirection: 'column'}}>
+            <div className="App">
 
-                {this.state.party &&
-                <div>
-                    {this.state.host} or {getLoggedInUser().email}
-                    <div className={'Header'}><h1>{this.state.partyName || `${this.state.host}'s party`}</h1>
-                        {this.props.match &&
-                        <div style={{width: '100%', backgroundColor: 'orange', height: 25, color: 'white'}}
-                             onClick={() => {
-                                 const address = `${window.__server__}/api/party/${this.props.match.params.id}/join`;
+                {
+                    this.state.party
+                    && <div>
+                        {this.state.host} or {getLoggedInUser().email}
 
-                                 console.log(address);
+                        <div className={'Header'}>
+                            <h1>{this.state.partyName || `${this.state.host}'s party`}</h1>
 
-                                 fetch(address, {
-                                     method: 'POST',
-                                     headers: {
-                                         'Authorization': 'JWT ' + getLoggedInUser().token
-                                     }
-                                 })
-                                     .then((response) => {
-                                         if (response.status >= 400) {
-                                             throw new Error("Bad response from server");
-                                         }
+                            {
+                                this.props.match
+                                && getButton(`${window.__server__}/api/party/${this.props.match.params.id}/join`, 'Join party')
+                            }
 
-                                         return response.json();
-                                     })
-                                     .then((json) => {
-                                         console.log(json);
-                                     });
-                             }}>
-                            Add party
-                        </div>}
-                        {this.props.match &&
-                        <div style={{width: '100%', backgroundColor: 'orange', height: 25, color: 'white'}}
-                             onClick={() => {
-                                 const address = `${window.__server__}/api/party/${this.props.match.params.id}/leave`;
+                            {
+                                this.props.match
+                                && getButton(`${window.__server__}/api/party/${this.props.match.params.id}/leave`, 'Leave party')
+                            }
+                        </div>
 
-                                 console.log(address);
+                        <div className={'List'}>
+                            {
+                                this.state.list.map((song, index) => (
+                                    <div key={song.link + index}
+                                         className={index === 0 ? 'currentSong' : ''}>
+                                        {song.artist_name}>{song.song_name}>{song.link}
+                                    </div>
+                                ))
+                            }
+                        </div>
 
-                                 fetch(address, {
-                                     method: 'POST',
-                                     headers: {
-                                         'Authorization': 'JWT ' + getLoggedInUser().token
-                                     }
-                                 })
-                                     .then((response) => {
-                                         if (response.status >= 400) {
-                                             throw new Error("Bad response from server");
-                                         }
-
-                                         return response.json();
-                                     })
-                                     .then((json) => {
-                                         console.log(json);
-                                     });
-                             }}>
-                            Leave party
-                        </div>}
-                    </div>
-                    <div className={'List'}>
-                        {this.state.list.map((song, index) => (
-                            <div key={song.link + index}
-                                 className={index === 0 ? 'currentSong' : ''}>{song.artist_name}>{song.song_name}>{song.link}
-                            </div>
-                        ))}
+                        <YoutubePlayer
+                            song={this.state.list[this.state.currentSong].link}
+                            onEnd={this.onSongEnd}
+                        />
 
                     </div>
-                    <div className={'Player'}>
-                        {this.state.list.length > 0 && <YouTube
-                            videoId={this.state.list[this.state.currentSong].link}
-                            opts={opts}
-                            onReady={this._onReady}
-                            onEnd={() => {
-
-                                let newList = this.state.list.slice();
-                                newList.push(newList.shift());
-
-                                this.setState((prevState) => ({
-                                    currentSong: prevState.currentSong,
-                                    list: newList
-                                }));
-                            }}
-                        />}
-                    </div>
-                </div>
                 }
             </div>
         );
